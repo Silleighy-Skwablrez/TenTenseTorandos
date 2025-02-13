@@ -19,6 +19,8 @@ public class PlayerController : MonoBehaviour
         movement.y = Input.GetAxisRaw("Vertical");
 
         movement = movement.normalized;
+        //if player is moving left then play the left anim
+
     }
 
     void FixedUpdate()
