@@ -314,6 +314,8 @@ GameObject:
   - component: {fileID: 96389183}
   - component: {fileID: 96389182}
   - component: {fileID: 96389186}
+  - component: {fileID: 96389187}
+  - component: {fileID: 96389188}
   m_Layer: 0
   m_Name: Villager 1 (1)_0
   m_TagString: Untagged
@@ -474,6 +476,31 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.58831656, y: 0.7122083}
   m_EdgeRadius: 0
+--- !u!114 &96389187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 96389181}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60b5c5dfac2fd174bb1b8810dfb2890a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &96389188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 96389181}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d211d091d8d490439a94df58016347e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetFrameRate: 60
 --- !u!1 &171678106
 GameObject:
   m_ObjectHideFlags: 0
