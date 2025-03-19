@@ -102,7 +102,6 @@ public class WorldHandler : MonoBehaviour
         //     }
         // }
 
-
         if (!tileRuleToTilemap.TryGetValue(tile, out Tilemap targetTilemap))
         {
             Debug.LogWarning($"No tilemap found for tile rule {tile.name}, trying to find by name");
