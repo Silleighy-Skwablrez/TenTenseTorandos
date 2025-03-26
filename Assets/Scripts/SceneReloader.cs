@@ -13,6 +13,6 @@ public class SceneReloader : MonoBehaviour
 
     void ReloadScene()
     {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        SceneManager.LoadScene("SampleScene");
     }
 }

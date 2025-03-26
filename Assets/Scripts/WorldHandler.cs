@@ -21,6 +21,8 @@ public class WorldHandler : MonoBehaviour
     // track initialization
     public bool IsInitialized { get; private set; }
 
+    public bool mapGenerated = false;
+
     void Start()
     {
         Initialize();
@@ -184,6 +186,8 @@ public class WorldHandler : MonoBehaviour
 
         // bye bye
         positionsArray.Dispose();
+
+        mapGenerated = true; // this method is only used for loading generated maps so we can set this here.
     }
 
     // process tiles in parallel using Burst
@@ -296,6 +300,7 @@ public class WorldHandler : MonoBehaviour
         terrainTypes.Dispose();
         positions.Dispose();
 
+        mapGenerated = true;
         return result;
     }
 

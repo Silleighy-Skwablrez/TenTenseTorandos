@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 078b586cf8b66430cba88b8e9432314e, type: 3}
+  m_Name: Rock 1
+  m_EditorClassIdentifier: 
+  decorationName: 
+  tile: {fileID: 11400000, guid: 479b0f213d4a8c10cbb57121b1d1862e, type: 2}
+  decorationPrefab: {fileID: 6666634484782872873, guid: 917bee9712167e683ba28e1f9092381e, type: 3}
+  breakable: 1
+  maxHealth: 1
+  dropItem: {fileID: 11400000, guid: c69708bebcc89a5189ebc25cc3617261, type: 2}

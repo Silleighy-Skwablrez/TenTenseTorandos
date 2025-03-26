@@ -7,6 +7,7 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine.UI;
+using UnityEngine.Tilemaps;
 
 public class WorldGenerator : MonoBehaviour
 {
@@ -29,10 +30,17 @@ public class WorldGenerator : MonoBehaviour
     [Range(0f, 1f)] public float waterLevel = 0.4f;
     [Range(0f, 1f)] public float sandLevel = 0.5f;
 
+    [Header("Decorations")]
+    public Tilemap decorationTilemap; // Regular Unity tilemap for decorations
+    public List<DecorationData> decorations; // List of decoration data
+    [Range(0f, 1f)] public float decorationDensity = 0.1f; // Percentage of grass tiles that get decorations
+    public bool placeDecorations = true; // Toggle to enable/disable decorations
+
     [Header("Other")]
-    public Slider progressSlider;
-    public Text progressText;
-    public Camera mainCamera;
+        public Slider progressSlider;
+        public Text progressText;
+        public GameObject gameUi;
+        public Camera mainCamera;
 
     [Header("Generation Settings")]
     [Tooltip("How many tiles to process per frame")]
@@ -40,6 +48,13 @@ public class WorldGenerator : MonoBehaviour
 
     void Start()
     {
+        RectTransform gameUiRect = gameUi.GetComponent<RectTransform>();
+        if (gameUiRect != null)
+        {
+            Vector2 offsetMin = gameUiRect.offsetMin;
+            gameUiRect.offsetMin = new Vector2(offsetMin.x, -10000);
+        }
+
         if (worldHandler == null)
             worldHandler = FindObjectOfType<WorldHandler>();
 
@@ -171,6 +186,16 @@ public class WorldGenerator : MonoBehaviour
         progressSlider.gameObject.SetActive(false);
         progressText.gameObject.SetActive(false);
 
+        //set gameui rect transform bottom to 25
+        // Show the game UI and set its position
+
+        RectTransform gameUiRect = gameUi.GetComponent<RectTransform>();
+        if (gameUiRect != null)
+        {
+            Vector2 offsetMin = gameUiRect.offsetMin;
+            gameUiRect.offsetMin = new Vector2(offsetMin.x, 25);
+        }
+
         // gta camera transition type beat
         float cameraSize = mainCamera.orthographicSize;
         while (cameraSize > 6.1f)
@@ -180,6 +205,14 @@ public class WorldGenerator : MonoBehaviour
             yield return null;
         }
 
+        mainCamera.orthographicSize = cameraSize;
+        yield return null;
+        
+        // Place decorations if enabled
+        if (placeDecorations && decorationTilemap != null && decorations != null && decorations.Count > 0)
+        {
+            yield return PlaceDecorationsCoroutine(allTiles[Grass]);
+        }
 
         if (progressSlider != null)
             progressSlider.value = 0;
@@ -331,5 +364,82 @@ public class WorldGenerator : MonoBehaviour
     public void ClearMap()
     {
         worldHandler.ClearAllTiles();
+    }
+
+    private IEnumerator PlaceDecorationsCoroutine(List<Vector3Int> grassPositions)
+    {
+        progressText.gameObject.SetActive(true);
+        progressSlider.gameObject.SetActive(true);
+        progressText.text = "Adding decorations...";
+        progressSlider.value = 0f;
+        
+        // Calculate how many decorations to place
+        int decorationCount = Mathf.RoundToInt(grassPositions.Count * decorationDensity);
+        
+        // Create a copy of grass positions to randomly select from
+        List<Vector3Int> availablePositions = new List<Vector3Int>(grassPositions);
+        
+        // Place decorations
+        int processed = 0;
+        
+        if (decorationTilemap != null)
+            decorationTilemap.ClearAllTiles(); // Clear existing decorations
+        
+        for (int i = 0; i < decorationCount; i++)
+        {
+            if (availablePositions.Count == 0 || decorations.Count == 0)
+                break;
+                
+            // Select a random position from available grass tiles
+            int randomIndex = UnityEngine.Random.Range(0, availablePositions.Count);
+            Vector3Int cellPos = availablePositions[randomIndex];
+            availablePositions.RemoveAt(randomIndex); // Ensure no duplicates
+            
+            // Select a random decoration
+            DecorationData decorData = decorations[UnityEngine.Random.Range(0, decorations.Count)];
+            
+            // Place the tile on the decoration tilemap
+            if (decorationTilemap != null && decorData.tile != null)
+                decorationTilemap.SetTile(cellPos, decorData.tile);
+                
+            // Instantiate the decoration game object if a prefab exists
+            if (decorData.decorationPrefab != null)
+            {
+                // Convert tilemap position to world position
+                Vector3 worldPos = decorationTilemap.GetCellCenterWorld(cellPos);
+                
+                // Instantiate the decoration
+                GameObject decorObj = Instantiate(decorData.decorationPrefab, worldPos, Quaternion.identity);
+                
+                // Set up the Decoration component
+                Decoration decoration = decorObj.GetComponent<Decoration>();
+                if (decoration != null)
+                {
+                    decoration.decorationName = decorData.decorationName;
+                    decoration.breakable = decorData.breakable;
+                    decoration.maxHealth = decorData.maxHealth;
+                    decoration.health = decorData.maxHealth;
+                    decoration.dropItem = decorData.dropItem;
+                    decoration.tile = decorData.tile;
+                }
+            }
+            
+            processed++;
+            
+            // Update progress in chunks to avoid freezing
+            if (processed % tilesPerFrame == 0)
+            {
+                progressText.text = $"Adding decorations... {processed}/{decorationCount}";
+                progressSlider.value = (float)processed / decorationCount;
+                yield return null; // Allow frame to render
+            }
+        }
+        
+        progressText.text = "Decorations complete!";
+        progressSlider.value = 1f;
+        yield return new WaitForSeconds(0.5f);
+        
+        progressText.gameObject.SetActive(false);
+        progressSlider.gameObject.SetActive(false);
     }
 }

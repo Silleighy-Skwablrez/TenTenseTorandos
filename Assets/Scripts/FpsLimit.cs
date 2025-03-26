@@ -9,4 +9,12 @@ public class FpsLimit : MonoBehaviour
         // QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = targetFrameRate;
     }
+
+    private void Update()
+    {
+        if (Application.targetFrameRate != targetFrameRate)
+        {
+            Application.targetFrameRate = targetFrameRate;
+        }
+    }
 }
