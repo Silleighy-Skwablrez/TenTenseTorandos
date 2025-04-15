@@ -14,12 +14,12 @@ public class IntroText : MonoBehaviour
         // get the TypeWrite component of textcomponent's gameobject
         typeWriter = _textComponent.GetComponent<TypeWrite>();
         Debug.Log("TypeWriter: " + typeWriter);
-        
+
         // Start the sequence coroutine
         Debug.Log("Starting intro sequence");
         StartCoroutine(ShowIntroSequence());
     }
-    
+
     IEnumerator ShowIntroSequence()
     {
         // wait until worldHandler is ready (mapGenerated = true)
@@ -39,7 +39,7 @@ public class IntroText : MonoBehaviour
         typeWriter.ClearText();
         yield return new WaitForSeconds(5f);
 
-        typeWriter.text = "COLLECT ROCKS WITH LEFT CLICK.\nPLACE LEVEES WIGH RIGHT CLICK.\nLEVEES COST TWO ROCKS.\nGOOD LUCK.";
+        typeWriter.text = "COLLECT ROCKS WITH LEFT CLICK.\nPLACE LEVEES WITH RIGHT CLICK.\nLEVEES COST TWO ROCKS.\nGOOD LUCK.";
         typeWriter.TypewriteText();
 
         yield return new WaitForSeconds(15f);
@@ -51,6 +51,6 @@ public class IntroText : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+
     }
 }
