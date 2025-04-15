@@ -410,4 +410,9 @@ public class WorldHandler : MonoBehaviour
 
         coordsToTileRule.Clear();
     }
+
+    public DualGridRuleTile getTile(Vector3Int pos)
+    {
+        // TODO: implement this
+    }
 }
