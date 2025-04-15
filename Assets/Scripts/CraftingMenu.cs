@@ -24,12 +24,13 @@ public class CraftingMenu : MonoBehaviour
 
     InventoryItem getSlot(int x, int y)
     {
-
+        return null;
     }
 
     bool tryCraftRecipe()
     {
         // check recipes array for a matching recipe, make sure to check if each recipe is reversable or rotatable
+        return false;
     }
 
     void setSlot(int x, int y)
