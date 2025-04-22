@@ -414,5 +414,6 @@ public class WorldHandler : MonoBehaviour
     public DualGridRuleTile getTile(Vector3Int pos)
     {
         // TODO: implement this
+        return coordsToTileRule.TryGetValue(pos, out var tile) ? tile : null;
     }
 }
