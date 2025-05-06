@@ -46,8 +46,12 @@ public class WorldGenerator : MonoBehaviour
     [Tooltip("How many tiles to process per frame")]
     public int tilesPerFrame = 250;
 
+    // Expose Grass tile positions
+    private List<Vector3Int> grassTilePositions;
+
     void Start()
     {
+        VillageGenerator villageGenerator = FindObjectOfType<VillageGenerator>();
         RectTransform gameUiRect = gameUi.GetComponent<RectTransform>();
         if (gameUiRect != null)
         {
@@ -74,6 +78,22 @@ public class WorldGenerator : MonoBehaviour
 
         // generate island
         StartCoroutine(GenerateIslandCoroutine());
+        // Wait for island generation to complete, then generate the village
+        StartCoroutine(GenerateVillageAfterIsland(villageGenerator));
+    }
+
+    public List<Vector3Int> GetGrassTilePositions()
+    {
+        return grassTilePositions;
+    }
+
+    private IEnumerator GenerateVillageAfterIsland(VillageGenerator villageGenerator)
+    {
+    // Wait until island generation is done
+    yield return new WaitUntil(() => grassTilePositions != null);
+
+    // Pass Grass tile positions to the VillageGenerator
+    villageGenerator.GenerateVillage(grassTilePositions, 30);
     }
 
     public void GenerateIsland()
@@ -172,6 +192,10 @@ public class WorldGenerator : MonoBehaviour
             progressSlider.value = 0.9f;
 
         yield return null;
+
+        // Assign Grass tile positions after classification
+        grassTilePositions = allTiles[Grass];
+        Debug.Log($"Total Grass Tiles: {grassTilePositions.Count}"); // Debug log to verify grass tiles
 
         progressText.text = "Finalizing...";
 
