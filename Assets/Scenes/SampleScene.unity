@@ -2922,7 +2922,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f2af58626e89814fb44119c7653f333, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DriftWood: {fileID: 0}
+  DriftWood: {fileID: 8375711381985983699, guid: 4a2aca4a615575c43b65f7c70c38532e, type: 3}
   SandPile: {fileID: 0}
 --- !u!4 &411027813
 Transform:
