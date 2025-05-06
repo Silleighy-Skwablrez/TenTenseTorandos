@@ -46,12 +46,14 @@ public class WorldGenerator : MonoBehaviour
     [Tooltip("How many tiles to process per frame")]
     public int tilesPerFrame = 250;
 
-    // Expose Grass tile positions
+    // List different materials tile positions
     private List<Vector3Int> grassTilePositions;
+    private List<Vector3Int> sandTilePositions;
 
     void Start()
     {
         VillageGenerator villageGenerator = FindObjectOfType<VillageGenerator>();
+        ResourceGenerator resourceGenerator = FindObjectOfType<ResourceGenerator>();
         RectTransform gameUiRect = gameUi.GetComponent<RectTransform>();
         if (gameUiRect != null)
         {
@@ -78,13 +80,19 @@ public class WorldGenerator : MonoBehaviour
 
         // generate island
         StartCoroutine(GenerateIslandCoroutine());
-        // Wait for island generation to complete, then generate the village
+        // Wait for island generation to complete, then generate the village and resources
         StartCoroutine(GenerateVillageAfterIsland(villageGenerator));
+        StartCoroutine(GenerateResourcesAfterIsland(resourceGenerator));
     }
 
     public List<Vector3Int> GetGrassTilePositions()
     {
         return grassTilePositions;
+    }
+
+    public List<Vector3Int> GetSandTilePositions()
+    {
+        return sandTilePositions;
     }
 
     private IEnumerator GenerateVillageAfterIsland(VillageGenerator villageGenerator)
@@ -94,6 +102,15 @@ public class WorldGenerator : MonoBehaviour
 
     // Pass Grass tile positions to the VillageGenerator
     villageGenerator.GenerateVillage(grassTilePositions, 30);
+    }
+
+    private IEnumerator GenerateResourcesAfterIsland(ResourceGenerator resourceGenerator)
+    {
+    //Wait until island generation is done
+    yield return new WaitUntil(() => sandTilePositions != null);
+
+    // Pass Sand tile positions to the ResourceGenerator
+    resourceGenerator.GenerateWood(sandTilePositions, 20);
     }
 
     public void GenerateIsland()
@@ -193,10 +210,12 @@ public class WorldGenerator : MonoBehaviour
 
         yield return null;
 
-        // Assign Grass tile positions after classification
+        // Assign tile positions after classification
         grassTilePositions = allTiles[Grass];
+        sandTilePositions = allTiles[Sand];
         Debug.Log($"Total Grass Tiles: {grassTilePositions.Count}"); // Debug log to verify grass tiles
-
+        Debug.Log($"Total Sand Tiles: {sandTilePositions.Count}"); // Debug log to verify sand tiles
+        
         progressText.text = "Finalizing...";
 
         // done
