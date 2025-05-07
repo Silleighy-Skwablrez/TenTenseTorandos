@@ -35,6 +35,17 @@ public partial class CursorController : MonoBehaviour {
     public InventoryItem rockItem;
     [Tooltip("Number of rocks required to build a wall")]
     public int rocksRequired = 2;
+    
+    // Perspective camera settings
+    [Tooltip("Layer mask for raycast to detect ground")]
+    public LayerMask groundLayerMask;
+    [Tooltip("Maximum distance for raycast")]
+    public float maxRaycastDistance = 100f;
+    [Tooltip("Y offset for cursor display")]
+    public float cursorHeightOffset = 0.05f;
+    
+    // Ground plane for raycast hit detection
+    private Plane groundPlane;
 
     void Start()
     {
@@ -46,6 +57,9 @@ public partial class CursorController : MonoBehaviour {
         {
             decorationTilemap = worldGenerator.decorationTilemap;
             Debug.Log("Found decoration tilemap: " + (decorationTilemap != null));
+            
+            // Initialize the ground plane - assumes tilemap is on XY plane
+            groundPlane = new Plane(Vector3.forward, Vector3.zero);
         }
         else
         {
@@ -61,79 +75,124 @@ public partial class CursorController : MonoBehaviour {
     }
 
     void Update() {
-        var mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-
-        Vector3Int tilePos = GetWorldPosTile(mouseWorldPos);
-        transform.position = Vector3.Lerp(transform.position, tilePos + new Vector3(0.5f, 0.5f, -1), 0.1f);
-
-        bool canPlaceTile = (Time.time - lastPlacementTime >= placementCooldown);
-
-        if (Input.GetMouseButton(1)) {
-            // Only set cell and play audio if we're at a new position AND cooldown has passed
-            if (!tilePos.Equals(lastTilePos) && canPlaceTile) {
-                // Check if player has enough rocks
-                if (playerInventory != null && rockItem != null && HasEnoughRocks()) {
-                    bool tileChanged = worldHandler.SetTile(tilePos, tile);
-                    
-                    // Play sound and update timestamps
-                    if (tileChanged) {
-                        // Consume the rocks from inventory
-                        playerInventory.RemoveItem(rockItem, rocksRequired);
-                        
-                        tileAudio.pitch = UnityEngine.Random.Range(0.9f, 1.1f);
-                        tileAudio.PlayOneShot(tileAudio.clip);
-                        lastPlacementTime = Time.time;
-                        lastTilePos = tilePos;
-                    }
-                } else {
-                    // Visual or audio feedback that player needs more rocks could be added here
-                    string rockCount = (playerInventory != null && rockItem != null) ? playerInventory.GetItemCount(rockItem).ToString() : "0";
-                    Debug.Log("Not enough rocks to build a wall! Need " + rocksRequired + " rocks. You have: " + rockCount);
-                }
+        Vector3Int tilePos;
+        
+        // Use raycast to find the tile position under cursor
+        if (GetTilePositionUnderCursor(out tilePos, out Vector3 hitPoint)) {
+            // Convert tile grid position to world position (centered on the tile)
+            Vector3 gridSnappedPosition;
+            
+            // If we have access to the tilemap, use its conversion method
+            if (decorationTilemap != null) {
+                // This will get the center of the tile in world coordinates
+                gridSnappedPosition = decorationTilemap.GetCellCenterWorld(tilePos);
+            } else {
+                // Fallback: manual calculation (assuming 1 unit = 1 tile)
+                gridSnappedPosition = new Vector3(tilePos.x + 0.5f, tilePos.y + 0.5f, 0);
             }
-        } else if (Input.GetMouseButton(0)) {
-            // if lmb pressed, damage decoration tiles
-            if (canPlaceTile) {
-                if (decorationTilemap == null) {
-                    Debug.LogError("No decoration tilemap assigned!");
-                    return;
-                }
-                
-                // Check if there's a decoration tile at the cursor position
-                if (decorationTilemap.HasTile(tilePos)) {
-                    Debug.Log($"Found decoration tile at {tilePos}");
-                    
-                    // Try to get or find the decoration at this position
-                    Decoration decoration = GetDecorationAtPosition(tilePos);
-                    
-                    if (decoration != null) {
-                        // Damage the decoration
-                        decoration.TakeDamage(damagePerHit);
-                        Debug.Log($"Damaged {decoration.decorationName} at {tilePos}, health now {decoration.health}/{decoration.maxHealth}");
+            
+            // Apply height offset to prevent z-fighting
+            gridSnappedPosition += new Vector3(0, 0, -cursorHeightOffset);
+            
+            // Move cursor to the grid-snapped position
+            transform.position = Vector3.Lerp(transform.position, gridSnappedPosition, 0.1f);
+            
+            bool canPlaceTile = (Time.time - lastPlacementTime >= placementCooldown);
+
+            if (Input.GetMouseButton(1)) {
+                // Only set cell and play audio if we're at a new position AND cooldown has passed
+                if (!tilePos.Equals(lastTilePos) && canPlaceTile) {
+                    // Check if player has enough rocks
+                    if (playerInventory != null && rockItem != null && HasEnoughRocks()) {
+                        bool tileChanged = worldHandler.SetTile(tilePos, tile);
                         
-                        // Play break sound if available
-                        if (breakSound != null) {
+                        // Play sound and update timestamps
+                        if (tileChanged) {
+                            // Consume the rocks from inventory
+                            playerInventory.RemoveItem(rockItem, rocksRequired);
+                            
                             tileAudio.pitch = UnityEngine.Random.Range(0.9f, 1.1f);
-                            tileAudio.PlayOneShot(breakSound);
-                        } else {
-                            // Use default sound if no break sound is set
-                            tileAudio.pitch = UnityEngine.Random.Range(0.7f, 0.9f); // Lower pitch for breaking
                             tileAudio.PlayOneShot(tileAudio.clip);
+                            lastPlacementTime = Time.time;
+                            lastTilePos = tilePos;
                         }
-                        
-                        lastPlacementTime = Time.time;
-                        lastTilePos = tilePos;
                     } else {
-                        Debug.LogWarning($"No decoration component found at {tilePos} despite tile being present!");
-                        // Force-remove the tile if no component was found
-                        decorationTilemap.SetTile(tilePos, null);
+                        // Visual or audio feedback that player needs more rocks could be added here
+                        string rockCount = (playerInventory != null && rockItem != null) ? playerInventory.GetItemCount(rockItem).ToString() : "0";
+                        Debug.Log("Not enough rocks to build a wall! Need " + rocksRequired + " rocks. You have: " + rockCount);
                     }
                 }
+            } else if (Input.GetMouseButton(0)) {
+                // if lmb pressed, damage decoration tiles
+                if (canPlaceTile) {
+                    if (decorationTilemap == null) {
+                        Debug.LogError("No decoration tilemap assigned!");
+                        return;
+                    }
+                    
+                    // Check if there's a decoration tile at the cursor position
+                    if (decorationTilemap.HasTile(tilePos)) {
+                        Debug.Log($"Found decoration tile at {tilePos}");
+                        
+                        // Try to get or find the decoration at this position
+                        Decoration decoration = GetDecorationAtPosition(tilePos);
+                        
+                        if (decoration != null) {
+                            // Damage the decoration
+                            decoration.TakeDamage(damagePerHit);
+                            Debug.Log($"Damaged {decoration.decorationName} at {tilePos}, health now {decoration.health}/{decoration.maxHealth}");
+                            
+                            // Play break sound if available
+                            if (breakSound != null) {
+                                tileAudio.pitch = UnityEngine.Random.Range(0.9f, 1.1f);
+                                tileAudio.PlayOneShot(breakSound);
+                            } else {
+                                // Use default sound if no break sound is set
+                                tileAudio.pitch = UnityEngine.Random.Range(0.7f, 0.9f); // Lower pitch for breaking
+                                tileAudio.PlayOneShot(tileAudio.clip);
+                            }
+                            
+                            lastPlacementTime = Time.time;
+                            lastTilePos = tilePos;
+                        } else {
+                            Debug.LogWarning($"No decoration component found at {tilePos} despite tile being present!");
+                            // Force-remove the tile if no component was found
+                            decorationTilemap.SetTile(tilePos, null);
+                        }
+                    }
+                }
+            } else {
+                // Reset the last position when no mouse button is pressed
+                lastTilePos = new Vector3Int(int.MinValue, int.MinValue, 0);
             }
-        } else {
-            // Reset the last position when no mouse button is pressed
-            lastTilePos = new Vector3Int(int.MinValue, int.MinValue, 0);
         }
+    }
+    
+    // Get the tile position under cursor using raycasting for perspective camera
+    private bool GetTilePositionUnderCursor(out Vector3Int tilePos, out Vector3 hitPoint) {
+        tilePos = new Vector3Int(int.MinValue, int.MinValue, 0);
+        hitPoint = Vector3.zero;
+        
+        // Create ray from mouse position through camera
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        
+        // Method 1: Try mathematical plane-ray intersection
+        float enter = 0.0f;
+        if (groundPlane.Raycast(ray, out enter)) {
+            hitPoint = ray.GetPoint(enter);
+            tilePos = GetWorldPosTile(hitPoint);
+            return true;
+        }
+        
+        // Method 2: Physics raycast as fallback
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit, maxRaycastDistance, groundLayerMask)) {
+            hitPoint = hit.point;
+            tilePos = GetWorldPosTile(hitPoint);
+            return true;
+        }
+        
+        return false;
     }
 
     // Check if player has enough rocks to build a wall

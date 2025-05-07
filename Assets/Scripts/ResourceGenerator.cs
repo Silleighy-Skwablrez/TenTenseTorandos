@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq; // Add this line to import LINQ functionality
 using UnityEngine;
 using skner.DualGrid;
 using Unity.Collections;
@@ -42,7 +43,7 @@ public class ResourceGenerator : MonoBehaviour
 
     public void GenerateWood(List<Vector3Int> sandPositions, int woodCount)
     {
-         if (sandPositions == null || sandPositions.Count == 0)
+        if (sandPositions == null || sandPositions.Count == 0)
         {
             Debug.LogError("No valid sand positions available for wood generation!");
             return;
@@ -56,8 +57,9 @@ public class ResourceGenerator : MonoBehaviour
 
         List<Vector3Int> randomPositions = RandomPositions(sandPositions, woodCount);
         int count = 0;
-        foreach (Vector3Int tilePosition in randomPositions) {
-            if(count >= woodCount) break;
+        foreach (Vector3Int tilePosition in randomPositions)
+        {
+            if (count >= woodCount) break;
 
             Place(tilePosition, DriftWood);
         }
@@ -68,7 +70,7 @@ public class ResourceGenerator : MonoBehaviour
         List<Vector3Int> randomized = new List<Vector3Int>();
         List<int> pastNums = new List<int>();
         int i = 0;
-        while(i < count)
+        while (i < count)
         {
             int randomNum = UnityEngine.Random.Range(0, positions.Count);
             if (!pastNums.Contains(randomNum))
@@ -82,28 +84,69 @@ public class ResourceGenerator : MonoBehaviour
     }
 
     void Place(Vector3Int tilePosition, GameObject placeable)
-    {   
-        if(placeable != null)
+    {
+        if (placeable != null)
         {
-                Vector3 worldPosition = tilemap.GetCellCenterWorld(tilePosition);
-                worldPosition.z = -1;
-                GameObject placing = Instantiate(placeable, worldPosition, Quaternion.identity);
-                Debug.Log($"House placed at tile position: {tilePosition}, world position: {worldPosition}");
+            Vector3 worldPosition = tilemap.GetCellCenterWorld(tilePosition);
+            worldPosition.z = -1;
+            GameObject placing = Instantiate(placeable, worldPosition, Quaternion.identity);
+            Debug.Log($"Resource placed at tile position: {tilePosition}, world position: {worldPosition}");
 
-                // Adjust house visibility
-                SpriteRenderer renderer = placing.GetComponentInChildren<SpriteRenderer>();
-                if (renderer != null)
+            // Adjust visibility
+            SpriteRenderer renderer = placing.GetComponentInChildren<SpriteRenderer>();
+            if (renderer != null)
+            {
+                renderer.sortingOrder = 10; // Ensure sprite is rendered above the tilemap
+            }
+
+            // Add or configure Decoration component for harvesting
+            Decoration decoration = placing.GetComponent<Decoration>();
+            if (decoration == null)
+            {
+                decoration = placing.AddComponent<Decoration>();
+            }
+
+            // Configure the decoration for driftwood
+            if (placeable == DriftWood)
+            {
+                decoration.decorationName = "Driftwood";
+                decoration.breakable = true;
+                decoration.maxHealth = 3;
+                decoration.health = 3;
+
+                // Make sure to set up the drop item - you'll need to assign this in the Inspector
+                // or find a reference to a wood/driftwood item in your inventory system
+                InventoryItem woodItem = Resources.FindObjectsOfTypeAll<InventoryItem>().FirstOrDefault(item => item.name.ToLower().Contains("wood"));
+
+                if (woodItem != null)
                 {
-                    renderer.sortingOrder = 10; // Ensure house sprite is rendered above the tilemap
-                    Debug.Log($"Set house sprite sorting order to {renderer.sortingOrder}");
+                    decoration.dropItem = woodItem;
+                }
+                else
+                {
+                    Debug.LogWarning("Could not find wood item for driftwood drops!");
                 }
 
-                // Track the generated house to prevent duplicates
-                generatedItems.Add(tilePosition);
+                // Find and assign the ground item prefab
+                GameObject groundItemPrefab = Resources.FindObjectsOfTypeAll<GameObject>()
+                    .FirstOrDefault(go => go.GetComponent<GroundItem>() != null);
+
+                if (groundItemPrefab != null)
+                {
+                    decoration.groundItemPrefab = groundItemPrefab;
+                }
+                else
+                {
+                    Debug.LogWarning("Could not find ground item prefab for dropping items!");
+                }
             }
+
+            // Track the generated item to prevent duplicates
+            generatedItems.Add(tilePosition);
+        }
         else
         {
             Debug.LogError("Item prefab is not assigned!");
         }
-}
+    }
 }

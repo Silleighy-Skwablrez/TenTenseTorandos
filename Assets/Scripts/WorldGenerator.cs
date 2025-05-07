@@ -240,15 +240,34 @@ public class WorldGenerator : MonoBehaviour
         }
 
         // gta camera transition type beat
-        float cameraSize = mainCamera.orthographicSize;
-        while (cameraSize > 6.1f)
+        if (mainCamera.orthographic)
         {
-            cameraSize = Mathf.Lerp(cameraSize, 6, 0.025f);
+            // Original orthographic camera logic
+            float cameraSize = mainCamera.orthographicSize;
+            while (cameraSize > 6.1f)
+            {
+                cameraSize = Mathf.Lerp(cameraSize, 6, 0.025f);
+                mainCamera.orthographicSize = cameraSize;
+                yield return null;
+            }
             mainCamera.orthographicSize = cameraSize;
-            yield return null;
         }
-
-        mainCamera.orthographicSize = cameraSize;
+        else
+        {
+            // New perspective camera logic
+            float fov = mainCamera.fieldOfView;
+            float targetFov = 1f; // Adjust this value to match your desired zoom level
+            
+            while (fov > targetFov + 1f)
+            {
+                fov = Mathf.Lerp(fov, targetFov, 0.025f);
+                mainCamera.fieldOfView = fov;
+                yield return null;
+            }
+            
+            mainCamera.fieldOfView = targetFov;
+        }
+        
         yield return null;
         
         // Place decorations if enabled
