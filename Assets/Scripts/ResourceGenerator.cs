@@ -18,6 +18,10 @@ public class ResourceGenerator : MonoBehaviour
     private HashSet<Vector3Int> generatedItems = new HashSet<Vector3Int>();
     private Tilemap tilemap; // Tilemap reference will be fetched dynamically
     private WorldHandler worldHandler; // Reference to the WorldHandler
+
+    // Add object pooling similar to WorldGenerator
+    private Dictionary<string, Queue<GameObject>> resourcePools = new Dictionary<string, Queue<GameObject>>();
+
     // Start is called before the first frame update
     void Start()
     {
@@ -83,13 +87,47 @@ public class ResourceGenerator : MonoBehaviour
         return randomized;
     }
 
+    private GameObject GetPooledResource(GameObject prefab)
+    {
+        string key = prefab.name;
+
+        // Create pool if it doesn't exist
+        if (!resourcePools.ContainsKey(key))
+        {
+            resourcePools[key] = new Queue<GameObject>();
+        }
+
+        // Try to get from pool
+        Queue<GameObject> pool = resourcePools[key];
+        GameObject obj = null;
+
+        while (pool.Count > 0 && obj == null)
+        {
+            obj = pool.Dequeue();
+        }
+
+        // Create new if needed
+        if (obj == null)
+        {
+            obj = Instantiate(prefab);
+            obj.name = prefab.name;
+        }
+
+        obj.SetActive(true);
+        return obj;
+    }
+
+    // Update the Place method
     void Place(Vector3Int tilePosition, GameObject placeable)
     {
         if (placeable != null)
         {
             Vector3 worldPosition = tilemap.GetCellCenterWorld(tilePosition);
             worldPosition.z = -1;
-            GameObject placing = Instantiate(placeable, worldPosition, Quaternion.identity);
+
+            // Get from pool instead of instantiate
+            GameObject placing = GetPooledResource(placeable);
+            placing.transform.position = worldPosition;
             Debug.Log($"Resource placed at tile position: {tilePosition}, world position: {worldPosition}");
 
             // Adjust visibility

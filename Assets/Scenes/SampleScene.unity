@@ -4348,7 +4348,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: c181f5718cfcba24f82fed2e1ec56e3a, type: 3}
+  m_audioClip: {fileID: 8300000, guid: 3309975f63cddfc448e09669b2d6e8a0, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 0.167
   m_Pitch: 1
@@ -8063,9 +8063,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6aad6caf934676428ac0c52df225d2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  imageToRotate: {fileID: 256511236}
-  direction: 0
-  stormData: {fileID: 0}
 --- !u!114 &1520429625
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8816,8 +8813,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   housePrefab: {fileID: 934018902}
-  housePrefabBack: {fileID: 1934523330}
-  spacing: 4
+  pathTile: {fileID: 11400000, guid: 6c6c61ee75d28b7c9a283ad1c4c05c66, type: 2}
+  pathWidth: 1
+  minHouseDistance: 4
+  maxHouses: 5
+  houseWidth: 2
+  houseHeight: 3
+  turnCostMultiplier: 100
 --- !u!4 &1645450514
 Transform:
   m_ObjectHideFlags: 0

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using skner.DualGrid;
@@ -415,5 +416,102 @@ public class WorldHandler : MonoBehaviour
     {
         // TODO: implement this
         return coordsToTileRule.TryGetValue(pos, out var tile) ? tile : null;
+    }
+
+    // Coroutine to set all tiles at once without freezing the game
+    public IEnumerator SetAllTilesAtOnceCoroutine(Dictionary<DualGridRuleTile, List<Vector3Int>> tileMap, int batchSize = 100)
+    {
+        // dictionary to batch tiles by tilemap
+        Dictionary<Tilemap, Dictionary<Vector3Int, TileBase>> tilemapBatches = new Dictionary<Tilemap, Dictionary<Vector3Int, TileBase>>();
+
+        // Prepare batches first
+        foreach (var entry in tileMap)
+        {
+            DualGridRuleTile tile = entry.Key;
+            List<Vector3Int> positions = entry.Value;
+
+            if (positions == null || positions.Count == 0)
+                continue;
+
+            if (!tileRuleToTilemap.TryGetValue(tile, out Tilemap targetTilemap))
+            {
+                // Fallback logic (same as original)
+                foreach (var pair in tileRuleToTilemap)
+                {
+                    if (pair.Key.name == tile.name)
+                    {
+                        targetTilemap = pair.Value;
+                        break;
+                    }
+                }
+
+                if (targetTilemap == null && dualGridTilemaps.Length > 0)
+                {
+                    targetTilemap = dualGridTilemaps[0];
+                }
+            }
+
+            if (targetTilemap == null)
+            {
+                Debug.LogError($"Could not find a tilemap for tile {tile.name}");
+                continue;
+            }
+
+            // Get or create batch for this tilemap
+            if (!tilemapBatches.TryGetValue(targetTilemap, out var batch))
+            {
+                batch = new Dictionary<Vector3Int, TileBase>();
+                tilemapBatches[targetTilemap] = batch;
+            }
+
+            // Add positions to batch
+            foreach (var position in positions)
+            {
+                // Clear existing tiles (but just in dictionary, not physically yet)
+                if (coordsToTileRule.TryGetValue(position, out var existingTile))
+                {
+                    coordsToTileRule.Remove(position);
+                }
+
+                // Add to batch
+                batch[position] = tile;
+                coordsToTileRule[position] = tile;
+            }
+        }
+
+        // Process batches in chunks
+        foreach (var batch in tilemapBatches)
+        {
+            Tilemap tilemap = batch.Key;
+            Dictionary<Vector3Int, TileBase> tiles = batch.Value;
+            
+            // Process in batches of batchSize
+            List<Vector3Int> positions = new List<Vector3Int>(tiles.Keys);
+            for (int i = 0; i < positions.Count; i += batchSize)
+            {
+                int currentBatchSize = Mathf.Min(batchSize, positions.Count - i);
+                Vector3Int[] batchPositions = new Vector3Int[currentBatchSize];
+                TileBase[] batchTiles = new TileBase[currentBatchSize];
+                
+                for (int j = 0; j < currentBatchSize; j++)
+                {
+                    Vector3Int pos = positions[i + j];
+                    batchPositions[j] = pos;
+                    batchTiles[j] = tiles[pos];
+                }
+                
+                // Apply batch
+                tilemap.SetTiles(batchPositions, batchTiles);
+                
+                // Yield to prevent freezing
+                yield return null;
+            }
+        }
+
+        // Refresh tiles once all are placed
+        foreach (var tilemap in dualGridTilemaps)
+        {
+            tilemap.RefreshAllTiles();
+        }
     }
 }

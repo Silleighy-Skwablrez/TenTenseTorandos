@@ -50,6 +50,8 @@ public class WorldGenerator : MonoBehaviour
     private List<Vector3Int> grassTilePositions;
     private List<Vector3Int> sandTilePositions;
 
+    private Dictionary<string, Queue<GameObject>> decorationPools = new Dictionary<string, Queue<GameObject>>();
+
     void Start()
     {
         VillageGenerator villageGenerator = FindObjectOfType<VillageGenerator>();
@@ -470,8 +472,9 @@ public class WorldGenerator : MonoBehaviour
                 // Convert tilemap position to world position
                 Vector3 worldPos = decorationTilemap.GetCellCenterWorld(cellPos);
                 
-                // Instantiate the decoration
-                GameObject decorObj = Instantiate(decorData.decorationPrefab, worldPos, Quaternion.identity);
+                // Get from pool instead of Instantiate
+                GameObject decorObj = GetPooledDecoration(decorData.decorationPrefab);
+                decorObj.transform.position = worldPos;
                 
                 // Set up the Decoration component
                 Decoration decoration = decorObj.GetComponent<Decoration>();
@@ -503,5 +506,58 @@ public class WorldGenerator : MonoBehaviour
         
         progressText.gameObject.SetActive(false);
         progressSlider.gameObject.SetActive(false);
+    }
+
+    // Get decoration from pool or create new
+    private GameObject GetPooledDecoration(GameObject prefab)
+    {
+        string key = prefab.name;
+        
+        // Create pool if it doesn't exist
+        if (!decorationPools.ContainsKey(key))
+        {
+            decorationPools[key] = new Queue<GameObject>();
+        }
+        
+        // Try to get from pool
+        Queue<GameObject> pool = decorationPools[key];
+        GameObject obj = null;
+        
+        while (pool.Count > 0 && obj == null)
+        {
+            obj = pool.Dequeue();
+        }
+        
+        // Create new if needed
+        if (obj == null)
+        {
+            obj = Instantiate(prefab);
+            obj.name = prefab.name;
+        }
+        
+        obj.SetActive(true);
+        return obj;
+    }
+
+    // Return decoration to pool
+    public void ReturnToPool(GameObject obj)
+    {
+        if (obj == null) return;
+        
+        // Find the right pool
+        string key = obj.name.Replace("(Clone)", "").Trim();
+        
+        // Create pool if needed
+        if (!decorationPools.ContainsKey(key))
+        {
+            decorationPools[key] = new Queue<GameObject>();
+        }
+        
+        // Reset and deactivate
+        obj.transform.position = Vector3.zero;
+        obj.SetActive(false);
+        
+        // Add to pool
+        decorationPools[key].Enqueue(obj);
     }
 }

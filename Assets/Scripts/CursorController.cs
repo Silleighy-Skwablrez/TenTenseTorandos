@@ -47,6 +47,10 @@ public partial class CursorController : MonoBehaviour {
     // Ground plane for raycast hit detection
     private Plane groundPlane;
 
+    private Decoration[] allDecorations;
+    private float decorationRefreshTimer = 0f;
+    private const float DECORATION_REFRESH_INTERVAL = 2f;
+
     void Start()
     {
         worldHandler = GameObject.Find("WorldHandler").GetComponent<WorldHandler>();
@@ -72,6 +76,15 @@ public partial class CursorController : MonoBehaviour {
         {
             Debug.LogError("No InventoryHandler found in the scene!");
         }
+
+        // Cache all decorations
+        RefreshAllDecorations();
+    }
+
+    private void RefreshAllDecorations()
+    {
+        allDecorations = FindObjectsOfType<Decoration>();
+        decorationRefreshTimer = DECORATION_REFRESH_INTERVAL;
     }
 
     void Update() {
@@ -166,6 +179,12 @@ public partial class CursorController : MonoBehaviour {
                 lastTilePos = new Vector3Int(int.MinValue, int.MinValue, 0);
             }
         }
+
+        decorationRefreshTimer -= Time.deltaTime;
+        if (decorationRefreshTimer <= 0f)
+        {
+            RefreshAllDecorations();
+        }
     }
     
     // Get the tile position under cursor using raycasting for perspective camera
@@ -214,31 +233,29 @@ public partial class CursorController : MonoBehaviour {
             }
         }
         
-        // Look for a Decoration component at this position
+        // Get world position for this tile
         Vector3 worldPos = decorationTilemap.GetCellCenterWorld(tilePos);
         
-        // Method 1: Try using physics
+        // Method 1: Try using physics (more precise but potentially expensive)
         Collider2D[] colliders = Physics2D.OverlapCircleAll(worldPos, 0.5f);
-        Debug.Log($"Found {colliders.Length} colliders at {worldPos}");
-        
         foreach (Collider2D collider in colliders) {
             Decoration decoration = collider.GetComponent<Decoration>();
             if (decoration != null) {
-                // Cache it for later
                 decorationCache[tilePos] = decoration;
                 return decoration;
             }
         }
         
-        // Method 2: Try direct GameObject search
-        // Find all decoration objects in the scene
-        Decoration[] allDecorations = FindObjectsOfType<Decoration>();
-        foreach (Decoration decoration in allDecorations) {
-            Vector3Int decorPos = decorationTilemap.WorldToCell(decoration.transform.position);
-            if (decorPos == tilePos) {
-                // Cache it for later
-                decorationCache[tilePos] = decoration;
-                return decoration;
+        // Method 2: Use the pre-cached decorations list
+        if (allDecorations != null) {
+            foreach (Decoration decoration in allDecorations) {
+                if (decoration == null) continue;
+                
+                Vector3Int decorPos = decorationTilemap.WorldToCell(decoration.transform.position);
+                if (decorPos == tilePos) {
+                    decorationCache[tilePos] = decoration;
+                    return decoration;
+                }
             }
         }
         

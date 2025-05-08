@@ -35,6 +35,10 @@ public class GroundItem : MonoBehaviour
     private Vector2 popDirection;
     private float popTimer = 0f;
     
+    // Cache these values to avoid recalculation
+    private float bobTime;
+    private float lastUpdateTime;
+    
     void Awake()
     {
         // Try to find a sprite renderer if not already assigned
@@ -76,6 +80,9 @@ public class GroundItem : MonoBehaviour
     
     void Update()
     {
+        // Skip update if not visible
+        if (!spriteRenderer.isVisible) return;
+        
         // Handle initial "pop" animation
         if (popTimer > 0)
         {
