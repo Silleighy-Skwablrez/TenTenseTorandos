@@ -378,26 +378,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a6ed2f9dc173892b1e594b65c14c4d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  text: 'You were swept out to sea.
+  text: 'The village was unprepared for
 
-    You land on the shore of a populated country...
+    the storm and has been lost.
 
-    You
-    meet the previous meteorologist there.
+    Nothing
+    could be salvaged...
 
-    ... but.
 
-    Your island was destroyed...
-
-    The
-    people of the island are in dismay.
-
-    You have been replaced.
-
-    ...
-
-    Thank
-    you for playing.'
+    May future settlements avoid the same fate.'
   typingSound: {fileID: 8300000, guid: 4513ef8275a633a248c2dcdf55c238c7, type: 3}
   typingSoundVolume: 0.4
   baseTypingSpeed: 15
@@ -701,7 +690,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 8300000, guid: d6fe999df3feeebfa81eae94a9241564, type: 3}
   m_PlayOnAwake: 1
-  m_Volume: 1
+  m_Volume: 0.111
   m_Pitch: 1
   Loop: 0
   Mute: 0

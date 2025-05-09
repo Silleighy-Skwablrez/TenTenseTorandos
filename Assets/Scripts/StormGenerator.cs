@@ -59,6 +59,12 @@ public class StormGenerator : MonoBehaviour
     private StormData currentStormReadings; // What the player sees (with inaccuracy)
     private List<string> unusedStormNames;
     
+    // Add this field to store prepared damage statistics
+    private StormDamageStatistics preparedDamageStats = null;
+    
+    private StormData preparedStorm;
+    private bool stormPrepared = false;
+    
     private void Awake()
     {
         // Copy storm names to working list
@@ -225,6 +231,49 @@ public class StormGenerator : MonoBehaviour
         stats.storm = currentStorm;
         
         return stats;
+    }
+    
+    // Separate preparation from execution
+    public void PrepareStorm()
+    {
+        // Just generate storm data but don't apply damage yet
+        if (currentStorm == null)
+        {
+            Debug.LogWarning("No storm data available to prepare");
+            return;
+        }
+    }
+    
+    public void PrepareStormOnly()
+    {
+        // Store current storm but don't damage anything yet
+        preparedStorm = currentStorm;
+        stormPrepared = true;
+    }
+
+    public StormDamageStatistics ApplyPreparedStormDamage()
+    {
+        if (!stormPrepared || preparedStorm == null)
+        {
+            Debug.LogWarning("No storm has been prepared!");
+            return new StormDamageStatistics();
+        }
+
+        // NEW: Create a local reference to the storm to apply damage with
+        StormData stormToApply = preparedStorm;
+        
+        // Apply damage with the storm reference
+        DestructableStructure[] structures = FindObjectsOfType<DestructableStructure>();
+        foreach (DestructableStructure structure in structures)
+        {
+            structure.ApplyStormDamage(stormToApply);
+        }
+        
+        // Reset the prepared flag
+        stormPrepared = false;
+        
+        // Return the damage statistics
+        return GetStormDamageStatistics();
     }
 }
 

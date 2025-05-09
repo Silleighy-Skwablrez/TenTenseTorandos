@@ -423,8 +423,7 @@ public class VillageGenerator : MonoBehaviour
         Vector3 worldPos = tilemap.GetCellCenterWorld(position);
         
         // Add the 0.5,0.5 offset required for dual grid alignment
-        worldPos.x += 0.5f;
-        worldPos.x -= 1f;
+        worldPos.x -= 0.5f;
         worldPos.y += 0.5f;
         worldPos.z = -1f; // Ensure house is above ground
         
