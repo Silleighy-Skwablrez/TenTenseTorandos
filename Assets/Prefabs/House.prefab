@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 864785431737546928}
   m_Layer: 0
   m_Name: House
-  m_TagString: Untagged
+  m_TagString: House
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -157,9 +157,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5740402a815c0e4589417aa84abaced, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  floodingResilience: 0.501
-  lightningResilience: 0.557
-  windResilience: 0.698
+  floodingResilience: 0.65
+  lightningResilience: 0.917
+  windResilience: 0.859
   electricalResilience: 1
   maxHealth: 1
   currentHealth: 0

@@ -26,9 +26,9 @@ public class InventorySlot : MonoBehaviour
     
     void Start()
     {
-        countLabel = transform.GetChild(0).GetComponent<Text>();
+        countLabel = transform.GetChild(1).GetComponent<Text>();
         countLabel.gameObject.SetActive(false); // just in case its left enabled in the editor
-        contentImageObject = transform.GetChild(1).gameObject;
+        contentImageObject = transform.GetChild(0).gameObject;
         contentImage = contentImageObject.GetComponent<Image>();
         contentImage.sprite = null;
         contentImageObject.SetActive(false); // just in case its left enabled in the editor

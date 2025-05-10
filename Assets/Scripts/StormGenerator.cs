@@ -30,6 +30,15 @@ public class StormGenerator : MonoBehaviour
     [Range(0f, 1f)]
     public float randomnessFactor = 0.3f;
     
+    [Header("Damage Randomization")]
+    [Tooltip("How much random variation to apply to damage (0-1)")]
+    [Range(0f, 1f)]
+    public float damageRandomness = 0.25f;
+    
+    [Tooltip("Minimum damage multiplier even with perfect preparation")]
+    [Range(0.1f, 0.5f)]
+    public float minDamageMultiplier = 0.2f;
+    
     [Header("Sensor Accuracy")]
     [Tooltip("Base inaccuracy for sensor readings (0 = perfect accuracy)")]
     [Range(0f, 1f)]
@@ -259,14 +268,30 @@ public class StormGenerator : MonoBehaviour
             return new StormDamageStatistics();
         }
 
+        // Calculate preparedness before applying damage
+        CalculatePreparedness prepCalc = FindObjectOfType<CalculatePreparedness>();
+        if (prepCalc != null)
+        {
+            prepCalc.UpdatePreparedness();
+            Debug.Log("Town preparedness level: " + prepCalc.GetPreparednessStatus());
+        }
+
         // NEW: Create a local reference to the storm to apply damage with
         StormData stormToApply = preparedStorm;
         
-        // Apply damage with the storm reference
+        // Apply damage with the storm reference and randomness
         DestructableStructure[] structures = FindObjectsOfType<DestructableStructure>();
         foreach (DestructableStructure structure in structures)
         {
+            // NEW: Apply randomness to damage
+            float randomFactor = 1f + Random.Range(-damageRandomness, damageRandomness);
             structure.ApplyStormDamage(stormToApply);
+        }
+        
+        // Reset the resistances for next storm
+        if (prepCalc != null)
+        {
+            prepCalc.ResetStructureResistances();
         }
         
         // Reset the prepared flag

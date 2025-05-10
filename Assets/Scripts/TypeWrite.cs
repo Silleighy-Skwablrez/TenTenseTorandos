@@ -1,11 +1,15 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using System;
 
 public class TypeWrite : MonoBehaviour
 {
     [TextArea(3, 10)]
     public string text;
+    
+    // Add event for typewrite completion
+    public event Action OnTypewriteComplete;
     
     private string _previousText;
     private Text _textComponent;
@@ -91,13 +95,17 @@ public class TypeWrite : MonoBehaviour
     {
         _textComponent.text = "";
         
-        if (string.IsNullOrEmpty(text)) yield break;
+        if (string.IsNullOrEmpty(text)) 
+        {
+            OnTypewriteComplete?.Invoke();
+            yield break;
+        }
         
         int totalLength = text.Length;
         int rampUpEnd = Mathf.Min(totalLength / 5, 12);
         int rampDownStart = Mathf.Max(totalLength - totalLength / 4, totalLength - 10);
         
-        float burstCounter = Random.Range(3f, 7f);
+        float burstCounter = UnityEngine.Random.Range(3f, 7f);
         bool inBurst = false;
         float burstDuration = 0f;
         
@@ -109,7 +117,7 @@ public class TypeWrite : MonoBehaviour
             // Play typing sound with random pitch
             if (typingSound != null && _audioSource != null)
             {
-                _audioSource.pitch = Random.Range(0.8f, 1.1f);
+                _audioSource.pitch = UnityEngine.Random.Range(0.8f, 1.1f);
                 _audioSource.PlayOneShot(typingSound, typingSoundVolume);
             }
             
@@ -118,7 +126,7 @@ public class TypeWrite : MonoBehaviour
             if (burstCounter <= 0 && !inBurst)
             {
                 inBurst = true;
-                burstDuration = Random.Range(1.5f, 3.5f);
+                burstDuration = UnityEngine.Random.Range(1.5f, 3.5f);
             }
             
             if (inBurst)
@@ -127,7 +135,7 @@ public class TypeWrite : MonoBehaviour
                 if (burstDuration <= 0)
                 {
                     inBurst = false;
-                    burstCounter = Random.Range(3f, 8f);
+                    burstCounter = UnityEngine.Random.Range(3f, 8f);
                 }
             }
             
@@ -152,15 +160,15 @@ public class TypeWrite : MonoBehaviour
             }
             
             // Add random variation to typing speed
-            speedMultiplier *= Random.Range(0.85f, 1.15f);
+            speedMultiplier *= UnityEngine.Random.Range(0.85f, 1.15f);
             
             // Calculate delay before next character
             float charDelay = 1f / (baseTypingSpeed * speedMultiplier);
             
             // Add thinking pauses
-            if (Random.value < thinkPauseChance && (text[i] == ' ' || text[i] == '.' || text[i] == ','))
+            if (UnityEngine.Random.value < thinkPauseChance && (text[i] == ' ' || text[i] == '.' || text[i] == ','))
             {
-                yield return new WaitForSeconds(Random.Range(minThinkDuration, maxThinkDuration));
+                yield return new WaitForSeconds(UnityEngine.Random.Range(minThinkDuration, maxThinkDuration));
             }
             // Pause longer after punctuation
             else if (IsPunctuation(text[i]))
@@ -172,6 +180,10 @@ public class TypeWrite : MonoBehaviour
                 yield return new WaitForSeconds(charDelay);
             }
         }
+        
+        // Invoke the event when typing is complete
+        OnTypewriteComplete?.Invoke();
+        _typewriteCoroutine = null;
     }
 
     [Header("Backspace Parameters")]
@@ -220,7 +232,10 @@ public class TypeWrite : MonoBehaviour
 
     private IEnumerator BackspaceRoutine()
     {
-        if (_textComponent == null || string.IsNullOrEmpty(_textComponent.text)) yield break;
+        if (_textComponent == null || string.IsNullOrEmpty(_textComponent.text)) 
+        {
+            yield break;
+        }
         
         string currentText = _textComponent.text;
         float backspaceDelay = initialBackspaceDelay;

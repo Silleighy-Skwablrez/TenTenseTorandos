@@ -11,7 +11,6 @@ public partial class CursorController : MonoBehaviour {
     // public audio for placing and breaking tiles
     public AudioSource tileAudio;
     public AudioClip breakSound; // Add sound for breaking decorations
-    public DualGridRuleTile tile;
     
     // Sound rate limiting (10 sounds per second = 0.1f cooldown)
     [Tooltip("Minimum time between tile placements in seconds (0.1 = 10 tiles/sec)")]
@@ -20,6 +19,8 @@ public partial class CursorController : MonoBehaviour {
     
     // Track the last position where we placed a tile
     private Vector3Int lastTilePos = new Vector3Int(int.MinValue, int.MinValue, 0);
+    // Track the last position where we already showed a placement error
+    private Vector3Int lastErrorPos = new Vector3Int(int.MinValue, int.MinValue, 0);
 
     // Decoration references
     private Tilemap decorationTilemap;
@@ -31,10 +32,6 @@ public partial class CursorController : MonoBehaviour {
 
     // Inventory references
     private InventoryHandler playerInventory;
-    [Tooltip("The Rock item required for building walls")]
-    public InventoryItem rockItem;
-    [Tooltip("Number of rocks required to build a wall")]
-    public int rocksRequired = 2;
     
     // Perspective camera settings
     [Tooltip("Layer mask for raycast to detect ground")]
@@ -43,6 +40,11 @@ public partial class CursorController : MonoBehaviour {
     public float maxRaycastDistance = 100f;
     [Tooltip("Y offset for cursor display")]
     public float cursorHeightOffset = 0.05f;
+    
+    [Tooltip("Size of collision check for placement")]
+    public float collisionCheckRadius = 0.4f;
+    [Tooltip("Layer mask for collision checking")]
+    public LayerMask placementCollisionMask;
     
     // Ground plane for raycast hit detection
     private Plane groundPlane;
@@ -53,7 +55,11 @@ public partial class CursorController : MonoBehaviour {
 
     void Start()
     {
-        worldHandler = GameObject.Find("WorldHandler").GetComponent<WorldHandler>();
+        worldHandler = GameObject.Find("WorldHandler")?.GetComponent<WorldHandler>();
+        if (worldHandler == null)
+        {
+            Debug.LogError("No WorldHandler found!");
+        }
         
         // Find the decoration tilemap from the WorldGenerator
         var worldGenerator = FindObjectOfType<WorldGenerator>();
@@ -75,6 +81,12 @@ public partial class CursorController : MonoBehaviour {
         if (playerInventory == null)
         {
             Debug.LogError("No InventoryHandler found in the scene!");
+        }
+
+        // If placement collision mask isn't set, default to everything except player layer
+        if (placementCollisionMask.value == 0)
+        {
+            placementCollisionMask = ~(1 << LayerMask.NameToLayer("Player"));
         }
 
         // Cache all decorations
@@ -114,25 +126,63 @@ public partial class CursorController : MonoBehaviour {
 
             if (Input.GetMouseButton(1)) {
                 // Only set cell and play audio if we're at a new position AND cooldown has passed
-                if (!tilePos.Equals(lastTilePos) && canPlaceTile) {
-                    // Check if player has enough rocks
-                    if (playerInventory != null && rockItem != null && HasEnoughRocks()) {
-                        bool tileChanged = worldHandler.SetTile(tilePos, tile);
-                        
-                        // Play sound and update timestamps
-                        if (tileChanged) {
-                            // Consume the rocks from inventory
-                            playerInventory.RemoveItem(rockItem, rocksRequired);
-                            
-                            tileAudio.pitch = UnityEngine.Random.Range(0.9f, 1.1f);
-                            tileAudio.PlayOneShot(tileAudio.clip);
-                            lastPlacementTime = Time.time;
-                            lastTilePos = tilePos;
+                if (!tilePos.Equals(lastTilePos) && canPlaceTile && playerInventory != null) {
+                    // Get the currently selected item
+                    InventoryItem selectedItem = playerInventory.GetSelectedItem();
+                    
+                    // Check if selected item is placeable and has a tile
+                    if (selectedItem != null && selectedItem.isPlaceable && selectedItem.placeTile != null) {
+                        // Check if player has the required resources
+                        if (selectedItem.HasRequiredResources(playerInventory)) {
+                            // Check if there's a collider at the placement position
+                            if (!HasColliderAtPosition(gridSnappedPosition)) {
+                                // Try to place the tile
+                                bool tileChanged = worldHandler.SetTile(tilePos, selectedItem.placeTile);
+                                
+                                // If placement successful, consume resources and play sound
+                                if (tileChanged) {
+                                    
+                                    // Consume the item itself (or required resources if defined)
+                                    if (selectedItem.placementResources != null && selectedItem.placementResources.Length > 0) {
+                                        // Use custom resources
+                                        selectedItem.ConsumeResources(playerInventory);
+                                    } else {
+                                        // Use the item itself (1 item per placement)
+                                        playerInventory.RemoveItem(selectedItem, 1);
+                                    }
+                                    // if name of tile is "wall", increment levee stat
+                                    if (selectedItem.placeTile.name == "wall") {
+                                        GameStats.Instance.IncrementStat("Levees Built", 1);
+                                    }
+                                    // Play sound for tile placement
+                                    if (selectedItem.useSound != null && tileAudio != null) {
+                                        tileAudio.pitch = UnityEngine.Random.Range(0.9f, 1.1f);
+                                        tileAudio.PlayOneShot(selectedItem.useSound);
+                                    } else if (tileAudio != null) {
+                                        tileAudio.pitch = UnityEngine.Random.Range(0.9f, 1.1f);
+                                        tileAudio.PlayOneShot(tileAudio.clip);
+                                    }
+                                    
+                                    lastPlacementTime = Time.time;
+                                    lastTilePos = tilePos;
+                                    
+                                    // Reset error position when we successfully place
+                                    lastErrorPos = new Vector3Int(int.MinValue, int.MinValue, 0);
+                                }
+                            } else {
+                                // Only provide feedback if this is a new position we're trying to build on
+                                if (!tilePos.Equals(lastErrorPos)) {
+                                    Debug.Log("Cannot place: Location is blocked by another object");
+                                    lastErrorPos = tilePos;
+                                }
+                            }
+                        } else {
+                            // Only provide feedback once per position
+                            if (!tilePos.Equals(lastErrorPos)) {
+                                Debug.Log($"Not enough resources to place {selectedItem.itemName}!");
+                                lastErrorPos = tilePos;
+                            }
                         }
-                    } else {
-                        // Visual or audio feedback that player needs more rocks could be added here
-                        string rockCount = (playerInventory != null && rockItem != null) ? playerInventory.GetItemCount(rockItem).ToString() : "0";
-                        Debug.Log("Not enough rocks to build a wall! Need " + rocksRequired + " rocks. You have: " + rockCount);
                     }
                 }
             } else if (Input.GetMouseButton(0)) {
@@ -177,6 +227,8 @@ public partial class CursorController : MonoBehaviour {
             } else {
                 // Reset the last position when no mouse button is pressed
                 lastTilePos = new Vector3Int(int.MinValue, int.MinValue, 0);
+                // Also reset the error position when mouse is released
+                lastErrorPos = new Vector3Int(int.MinValue, int.MinValue, 0);
             }
         }
 
@@ -185,6 +237,30 @@ public partial class CursorController : MonoBehaviour {
         {
             RefreshAllDecorations();
         }
+    }
+    
+    // Check if there's a collider at the specified position
+    private bool HasColliderAtPosition(Vector3 position)
+    {
+        // Use OverlapCircle to check for any colliders at the position
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(position, collisionCheckRadius, placementCollisionMask);
+        
+        // Filter out any unwanted colliders (e.g., player, triggers)
+        foreach (Collider2D collider in colliders)
+        {
+            // Skip triggers
+            if (collider.isTrigger)
+                continue;
+                
+            // Skip player collider
+            if (collider.CompareTag("Player"))
+                continue;
+                
+            // Found a valid blocking collider
+            return true;
+        }
+        
+        return false;
     }
     
     // Get the tile position under cursor using raycasting for perspective camera
@@ -212,14 +288,6 @@ public partial class CursorController : MonoBehaviour {
         }
         
         return false;
-    }
-
-    // Check if player has enough rocks to build a wall
-    private bool HasEnoughRocks() {
-        if (playerInventory == null || rockItem == null) return false;
-        
-        int rockCount = playerInventory.GetItemCount(rockItem);
-        return rockCount >= rocksRequired;
     }
 
     private Decoration GetDecorationAtPosition(Vector3Int tilePos) {

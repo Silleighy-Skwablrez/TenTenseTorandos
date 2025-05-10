@@ -32,18 +32,18 @@ public class IntroText : MonoBehaviour
 
         Debug.Log("World generated, starting intro sequence");
 
-        typeWriter.text = "the previous meteorologist is gone.\nyou are replacing him.\nprepare your island.";
+        typeWriter.text = "the previous meteorologist is gone.\nyou are replacing them.\nprepare your island.";
         typeWriter.TypewriteText();
 
         yield return new WaitForSeconds(10f);
         typeWriter.ClearText();
-        yield return new WaitForSeconds(5f);
+        // yield return new WaitForSeconds(5f);
 
-        typeWriter.text = "COLLECT ROCKS WITH LEFT CLICK.\nPLACE LEVEES WITH RIGHT CLICK.\nLEVEES COST TWO ROCKS.\nGOOD LUCK.";
-        typeWriter.TypewriteText();
+        // typeWriter.text = "COLLECT ROCKS WITH LEFT CLICK.\nPLACE LEVEES WITH RIGHT CLICK.\nLEVEES COST TWO ROCKS.\nGOOD LUCK.";
+        // typeWriter.TypewriteText();
 
-        yield return new WaitForSeconds(15f);
-        typeWriter.ClearText();
+        // yield return new WaitForSeconds(15f);
+        // typeWriter.ClearText();
 
 
     }

@@ -1,23 +1,59 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CraftingRecipe : MonoBehaviour
+[System.Serializable]
+public class RecipeIngredient
 {
-    public InventoryItem[][] ingredients; // Required grid input for recipe
-    public InventoryItem result; // What the recipe is for
-    public bool isRotatable; // Allows the recipe to match even if the grid is rotated by a multiple of 90 degrees
-    public bool isReversable; // This doesn't entail "uncrafting", but the recipe grid itself being able to be mirrored
+    public InventoryItem item;
+    public int amount = 1;
+}
 
-    // Start is called before the first frame update
-    void Start()
+[CreateAssetMenu(fileName = "New Crafting Recipe", menuName = "Inventory/Crafting Recipe")]
+public class CraftingRecipe : ScriptableObject
+{
+    public string recipeName;
+    public Sprite recipeIcon; // Optional icon to display in the crafting menu
+    [TextArea(2, 4)]
+    public string recipeDescription;
+    
+    [Header("Ingredients")]
+    public List<RecipeIngredient> ingredients = new List<RecipeIngredient>();
+    
+    [Header("Result")]
+    public InventoryItem resultItem;
+    public int resultAmount = 1;
+
+    // Check if player has all required ingredients
+    public bool CanCraft()
     {
-
+        if (InventoryHandler.instance == null) return false;
+        
+        foreach (RecipeIngredient ingredient in ingredients)
+        {
+            if (InventoryHandler.instance.GetItemCount(ingredient.item) < ingredient.amount)
+            {
+                return false;
+            }
+        }
+        
+        // Also check if inventory has room for the result
+        return InventoryHandler.instance.canAcceptItem(resultItem, resultAmount);
     }
 
-    // Update is called once per frame
-    void Update()
+    // Perform crafting - consume ingredients and add result
+    public bool Craft()
     {
-
+        if (!CanCraft()) return false;
+        
+        // Remove ingredients
+        foreach (RecipeIngredient ingredient in ingredients)
+        {
+            InventoryHandler.instance.RemoveItem(ingredient.item, ingredient.amount);
+        }
+        
+        // Add result
+        InventoryHandler.instance.AddItem(resultItem, resultAmount);
+        
+        return true;
     }
 }

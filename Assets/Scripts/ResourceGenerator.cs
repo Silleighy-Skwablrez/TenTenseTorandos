@@ -145,39 +145,39 @@ public class ResourceGenerator : MonoBehaviour
             }
 
             // Configure the decoration for driftwood
-            if (placeable == DriftWood)
-            {
-                decoration.decorationName = "Driftwood";
-                decoration.breakable = true;
-                decoration.maxHealth = 3;
-                decoration.health = 3;
+            // if (placeable == DriftWood)
+            // {
+            //     decoration.decorationName = "Driftwood";
+            //     decoration.breakable = true;
+            //     decoration.maxHealth = 3;
+            //     decoration.health = 3;
 
-                // Make sure to set up the drop item - you'll need to assign this in the Inspector
-                // or find a reference to a wood/driftwood item in your inventory system
-                InventoryItem woodItem = Resources.FindObjectsOfTypeAll<InventoryItem>().FirstOrDefault(item => item.name.ToLower().Contains("wood"));
+            //     // Make sure to set up the drop item - you'll need to assign this in the Inspector
+            //     // or find a reference to a wood/driftwood item in your inventory system
+            //     InventoryItem woodItem = Resources.FindObjectsOfTypeAll<InventoryItem>().FirstOrDefault(item => item.name.ToLower().Contains("wood"));
 
-                if (woodItem != null)
-                {
-                    decoration.dropItem = woodItem;
-                }
-                else
-                {
-                    Debug.LogWarning("Could not find wood item for driftwood drops!");
-                }
+            //     if (woodItem != null)
+            //     {
+            //         decoration.dropItem = woodItem;
+            //     }
+            //     else
+            //     {
+            //         Debug.LogWarning("Could not find wood item for driftwood drops!");
+            //     }
 
-                // Find and assign the ground item prefab
-                GameObject groundItemPrefab = Resources.FindObjectsOfTypeAll<GameObject>()
-                    .FirstOrDefault(go => go.GetComponent<GroundItem>() != null);
+            //     // Find and assign the ground item prefab
+            //     GameObject groundItemPrefab = Resources.FindObjectsOfTypeAll<GameObject>()
+            //         .FirstOrDefault(go => go.GetComponent<GroundItem>() != null);
 
-                if (groundItemPrefab != null)
-                {
-                    decoration.groundItemPrefab = groundItemPrefab;
-                }
-                else
-                {
-                    Debug.LogWarning("Could not find ground item prefab for dropping items!");
-                }
-            }
+            //     if (groundItemPrefab != null)
+            //     {
+            //         decoration.groundItemPrefab = groundItemPrefab;
+            //     }
+            //     else
+            //     {
+            //         Debug.LogWarning("Could not find ground item prefab for dropping items!");
+            //     }
+            // }
 
             // Track the generated item to prevent duplicates
             generatedItems.Add(tilePosition);

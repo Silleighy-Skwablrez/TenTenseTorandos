@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 1.18, y: 0, z: 0}
-  m_LocalScale: {x: 2, y: 2, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -76,7 +76,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 99
   m_Sprite: {fileID: 21300000, guid: feb85ef961427c6b0a623d9207a6635e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -102,13 +102,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   item: {fileID: 11400000, guid: c69708bebcc89a5189ebc25cc3617261, type: 2}
   spriteRenderer: {fileID: 369826816820216187}
-  bobHeight: 0.1
+  bobHeight: 0.5
   bobSpeed: 2
   rotateSpeed: 0
   attractionRadius: 2.5
   minAttractionSpeed: 0
   maxAttractionSpeed: 5
-  pickupDistance: 0.01
+  pickupDistance: 0.05
+  pickupDelay: 1
+  attractDuringDelay: 0
+  minPitch: 0.8
+  maxPitch: 1.2
   popForce: 1.5
   popDuration: 0.3
 --- !u!58 &-2173541594056121156

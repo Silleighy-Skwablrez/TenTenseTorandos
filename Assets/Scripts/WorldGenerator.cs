@@ -225,6 +225,7 @@ public class WorldGenerator : MonoBehaviour
             progressSlider.value = 1.0f;
 
         progressText.text = "Done!";
+        GameStats.Instance.IncrementStat("Islands Created");
         yield return new WaitForSeconds(1.5f);
 
         // hide progress bar and slider

@@ -87,6 +87,11 @@ public class DestructableStructure : MonoBehaviour
             return;
             
         isDestroyed = true;
+
+        if (gameObject.CompareTag("House") || gameObject.name.Contains("House"))
+        {
+            GameStats.Instance.IncrementStat("Houses Destroyed");
+        }
         
         // Play destruction effect
         if (destructionEffect != null)

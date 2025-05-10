@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System;
 
 public class DayManager : MonoBehaviour
 {
@@ -21,8 +22,10 @@ public class DayManager : MonoBehaviour
     [Header("UI Elements")]
     public CanvasGroup gameplayUI;
     public CanvasGroup stormAftermathUI;
+    public CanvasGroup gameOverUI;  // New canvas group for game over screen
     public TypeWrite stormSummaryTypeWrite;
     public TypeWrite destructionPercentageTypeWrite;
+    public TypeWrite gameOverMessageTypeWrite;  // New typewrite for game over messages
     public Text continuePromptText;
     public Image blackPanel;
     
@@ -36,17 +39,26 @@ public class DayManager : MonoBehaviour
     [Header("Scene Transition")]
     public string endGameSceneName = "EndGame";
     
+    [Header("Game Over Messages")]
+    public string winMessage = "Congratulations! You've survived all 10 days. You've proven yourself as a capable meteorologist.";
+    public string lossMessage = "Your town has sustained critical damage. With over 50% destruction, recovery is impossible. The remaining residents have decided to evacuate.";
+    public string restartPrompt = "Press 'ESC' to return to the main menu.";
+    
     [Header("Debug")]
     public bool enableDebugLogs = false;
     
     // States
-    private enum GameState { Day, Night, StormPrep, StormDamage, Aftermath, Transition }
+    private enum GameState { Day, Night, StormPrep, StormDamage, Aftermath, GameOver, Transition }
     private GameState currentState;
+    
+    // Events for better flow control
+    private event Action OnTypewriteComplete;
     
     // Private variables
     private int currentDay = 1;
     private float timeRemaining;
     private bool isGameOver = false;
+    private bool isWin = false;
     private List<AudioSource> stormAudioSources = new List<AudioSource>();
     
     // Tracking variables
@@ -91,6 +103,55 @@ public class DayManager : MonoBehaviour
             stormAftermathUI.interactable = false;
             stormAftermathUI.blocksRaycasts = false;
             stormAftermathUI.gameObject.SetActive(false);
+        }
+        
+        // Initialize game over UI if it exists
+        if (gameOverUI != null)
+        {
+            gameOverUI.alpha = 0;
+            gameOverUI.interactable = false;
+            gameOverUI.blocksRaycasts = false;
+            gameOverUI.gameObject.SetActive(false);
+        }
+        
+        // Initialize typewrite components with completion callbacks
+        if (stormSummaryTypeWrite != null)
+        {
+            stormSummaryTypeWrite.OnTypewriteComplete += () => {
+                DebugLog("Storm summary typewrite complete");
+                isSummaryComplete = true;
+                CheckTypewriteCompletions();
+            };
+        }
+        
+        if (destructionPercentageTypeWrite != null)
+        {
+            destructionPercentageTypeWrite.OnTypewriteComplete += () => {
+                DebugLog("Destruction percentage typewrite complete");
+                isPercentageComplete = true;
+                CheckTypewriteCompletions();
+            };
+        }
+        
+        if (gameOverMessageTypeWrite != null)
+        {
+            gameOverMessageTypeWrite.OnTypewriteComplete += () => {
+                DebugLog("Game over message typewrite complete");
+                ShowRestartPrompt();
+            };
+        }
+    }
+    
+    // Use this to handle when both typewrite components are done
+    private bool isSummaryComplete = false;
+    private bool isPercentageComplete = false;
+    
+    private void CheckTypewriteCompletions()
+    {
+        // Only invoke if both are complete
+        if (isSummaryComplete && isPercentageComplete)
+        {
+            OnTypewriteComplete?.Invoke();
         }
     }
     
@@ -157,6 +218,25 @@ public class DayManager : MonoBehaviour
                 currentState = GameState.Transition; // Prevent multiple inputs
             }
         }
+        
+        // Check for restart or quit in game over state
+        if (currentState == GameState.GameOver)
+        {
+            if (Input.anyKeyDown && continuePromptText != null && 
+                continuePromptText.gameObject.activeInHierarchy)
+            {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    // Restart the game
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                }
+                else if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    // Return to menu
+                    SceneManager.LoadScene("Menu");
+                }
+            }
+        }
     }
     
     /* DAY STATE */
@@ -168,6 +248,10 @@ public class DayManager : MonoBehaviour
         
         // Reset timer
         timeRemaining = dayDuration;
+        
+        // Reset typewrite completion flags
+        isSummaryComplete = false;
+        isPercentageComplete = false;
         
         // Update UI
         UpdateDayCounter();
@@ -227,10 +311,10 @@ public class DayManager : MonoBehaviour
         }
         
         // Now fade out UI
-        StartCoroutine(FadeOutDayUI());
+        StartCoroutine(EndDaySequence());
     }
     
-    IEnumerator FadeOutDayUI()
+    IEnumerator EndDaySequence()
     {
         // First fade out UI elements
         if (gameplayUI != null)
@@ -256,18 +340,18 @@ public class DayManager : MonoBehaviour
         if (musicSource != null)
             musicSource.Stop();
             
-        // Now transition to night (black screen)
-        StartBlackScreen();
+        // Now transition to night with storm
+        yield return StartCoroutine(StormSequence());
     }
     
-    /* BLACK SCREEN SEQUENCE */
+    /* STORM SEQUENCE */
     
-    void StartBlackScreen()
+    IEnumerator StormSequence()
     {
+        // Make screen black
         DebugLog("Making screen black");
         currentState = GameState.Night;
         
-        // Force black panel immediately
         if (blackPanel != null)
         {
             blackPanel.gameObject.SetActive(true);
@@ -281,26 +365,19 @@ public class DayManager : MonoBehaviour
             Canvas.ForceUpdateCanvases();
         }
         
-        // Start storm audio here
-        SetStormSounds(currentStorm);
+        // Start storm audio
+        StartCoroutine(FadeInStormSounds(currentStorm));
         
-        // Switch to storm damage state
-        DebugLog("Now calling ApplyStormDamage()");
-        Invoke("ApplyStormDamage", 0.5f); // Use Invoke to ensure screen is rendered before damage
-    }
-    
-    /* STORM DAMAGE */
-    
-    void ApplyStormDamage()
-    {
-        // At this point screen should be completely black
+        // Ensure screen is fully black before damage calculation
+        yield return new WaitForSeconds(0.5f);
+        
+        // Apply storm damage
         DebugLog("APPLYING STORM DAMAGE NOW (screen is black)");
         currentState = GameState.StormDamage;
         
-        // Safety check - make sure black panel is visible
-        if (blackPanel != null && (!blackPanel.gameObject.activeInHierarchy || blackPanel.color.a < 0.99f))
+        // Double-check black screen is active
+        if (blackPanel != null)
         {
-            DebugLog("WARNING: Black panel not fully visible when applying damage!");
             blackPanel.gameObject.SetActive(true);
             blackPanel.color = new Color(0, 0, 0, 1f);
             Canvas.ForceUpdateCanvases();
@@ -313,13 +390,16 @@ public class DayManager : MonoBehaviour
             DebugLog($"Storm damage applied: {currentStormStats.percentageDestroyed}% destroyed");
         }
         
-        // Move to aftermath after a short delay
-        Invoke("ShowAftermath", 1.0f);
+        // Delay for dramatic effect
+        yield return new WaitForSeconds(1.0f);
+        
+        // Show aftermath
+        yield return StartCoroutine(ShowAftermathSequence());
     }
     
     /* AFTERMATH STATE */
     
-    void ShowAftermath()
+    IEnumerator ShowAftermathSequence()
     {
         DebugLog("Showing storm aftermath");
         currentState = GameState.Aftermath;
@@ -332,12 +412,6 @@ public class DayManager : MonoBehaviour
         }
         
         // Show aftermath UI
-        StartCoroutine(FadeInAftermathUI());
-    }
-    
-    IEnumerator FadeInAftermathUI()
-    {
-        // Show aftermath UI
         if (stormAftermathUI != null)
         {
             stormAftermathUI.gameObject.SetActive(true);
@@ -346,8 +420,12 @@ public class DayManager : MonoBehaviour
             stormAftermathUI.blocksRaycasts = true;
         }
         
-        // Show storm summary
-        StartCoroutine(DisplayStormInfo());
+        // Setup completion callback
+        OnTypewriteComplete = null;
+        OnTypewriteComplete += ShowContinuePrompt;
+        
+        // Start typing effects
+        yield return StartCoroutine(DisplayStormInfo());
     }
     
     IEnumerator DisplayStormInfo()
@@ -368,31 +446,22 @@ public class DayManager : MonoBehaviour
             destructionPercentageTypeWrite.TypewriteText();
         }
         
-        // Wait for typing to complete
-        bool summaryComplete = false;
-        bool percentageComplete = false;
-        
-        while (!summaryComplete || !percentageComplete)
+        // If TypeWrite components don't have callbacks, fall back to timing
+        if (stormSummaryTypeWrite == null || destructionPercentageTypeWrite == null)
         {
-            if (stormSummaryTypeWrite == null || 
-                stormSummaryTypeWrite.text.Length == 0 || 
-                stormSummaryTypeWrite.GetComponent<Text>().text.Length >= stormSummaryTypeWrite.text.Length)
-            {
-                summaryComplete = true;
-            }
-            
-            if (destructionPercentageTypeWrite == null || 
-                destructionPercentageTypeWrite.text.Length == 0 || 
-                destructionPercentageTypeWrite.GetComponent<Text>().text.Length >= destructionPercentageTypeWrite.text.Length)
-            {
-                percentageComplete = true;
-            }
-            
-            yield return null;
+            // Fallback timing if components are missing
+            float timeToWait = Mathf.Max(3f, afterTypingDelay * 2);
+            yield return new WaitForSeconds(timeToWait);
+            ShowContinuePrompt();
         }
+    }
+    
+    private void ShowContinuePrompt()
+    {
+        // Only show once
+        OnTypewriteComplete = null;
         
-        // Wait an extra moment
-        yield return new WaitForSeconds(afterTypingDelay);
+        DebugLog("Showing continue prompt");
         
         // Show continue prompt
         if (continuePromptText != null)
@@ -417,15 +486,6 @@ public class DayManager : MonoBehaviour
             }
         }
         
-        // Fade out aftermath UI
-        if (stormAftermathUI != null)
-        {
-            stormAftermathUI.interactable = false;
-            stormAftermathUI.blocksRaycasts = false;
-            yield return StartCoroutine(FadeCanvasGroup(stormAftermathUI, stormAftermathUI.alpha, 0f, fadeDuration));
-            stormAftermathUI.gameObject.SetActive(false);
-        }
-        
         // Check if game should end
         bool maxDaysReached = currentDay >= maxDays;
         bool tooMuchDestruction = currentStormStats != null && 
@@ -433,30 +493,33 @@ public class DayManager : MonoBehaviour
         
         if (maxDaysReached || tooMuchDestruction)
         {
-            // Game over
+            // Game over - keep the aftermath UI visible
             isGameOver = true;
+            isWin = maxDaysReached && !tooMuchDestruction;
             
-            // Make sure we have a black screen
-            if (blackPanel != null)
-            {
-                blackPanel.gameObject.SetActive(true);
-                blackPanel.color = new Color(0, 0, 0, 1f);
-            }
-            
-            // Load end scene after a small delay
+            // Show game over message using the EXISTING UI 
+            // (no need to fade out/in, just update the text)
             yield return new WaitForSeconds(0.5f);
-            
-            if (!string.IsNullOrEmpty(endGameSceneName))
-            {
-                DebugLog("Loading end game scene");
-                SceneManager.LoadScene(endGameSceneName);
-            }
+            ShowGameOverScreen();
         }
         else
         {
+            // Only fade out aftermath UI if continuing to next day
+            if (stormAftermathUI != null)
+            {
+                stormAftermathUI.interactable = false;
+                stormAftermathUI.blocksRaycasts = false;
+                yield return StartCoroutine(FadeCanvasGroup(stormAftermathUI, stormAftermathUI.alpha, 0f, fadeDuration));
+                stormAftermathUI.gameObject.SetActive(false);
+            }
+            
             // Continue to next day
             currentDay++;
             DebugLog($"Advancing to day {currentDay}");
+            if (GameStats.Instance != null)
+            {
+                GameStats.Instance.IncrementStat("Total Days Survived");
+            }
             
             // Ensure black screen fully visible
             if (blackPanel != null)
@@ -471,6 +534,142 @@ public class DayManager : MonoBehaviour
             // Start the next day
             StartDay();
         }
+    }
+    
+    /* GAME OVER SCREEN */
+    
+    void ShowGameOverScreen()
+    {
+        currentState = GameState.GameOver;
+        DebugLog($"Game over: {(isWin ? "Win" : "Loss")}");
+        
+        // Reset typewrite completion flags since we're reusing the typewriters
+        isSummaryComplete = false;
+        isPercentageComplete = false;
+        
+        // Update the text content directly in the existing UI elements
+        if (stormSummaryTypeWrite != null)
+        {
+            stormSummaryTypeWrite.text = isWin ? winMessage : lossMessage;
+            stormSummaryTypeWrite.TypewriteText();
+        }
+        
+        // Clear the second typewrite or use it for additional stats
+        if (destructionPercentageTypeWrite != null)
+        {
+            destructionPercentageTypeWrite.text = "";  
+            destructionPercentageTypeWrite.TypewriteText();
+        }
+        
+        // Setup completion callback
+        OnTypewriteComplete = null;
+        OnTypewriteComplete += ShowRestartPrompt;
+    }
+
+    private IEnumerator ShowGameOverMessage()
+    {
+        // Wait a frame to ensure UI is properly activated
+        yield return null;
+        
+        // Reset typewrite completion flags since we're reusing the typewriters
+        isSummaryComplete = false;
+        isPercentageComplete = false;
+        
+        // Make sure the parent objects of typewrite components are active
+        if (stormSummaryTypeWrite != null)
+        {
+            // Ensure the gameObject is active
+            stormSummaryTypeWrite.gameObject.SetActive(true);
+            stormSummaryTypeWrite.text = isWin ? winMessage : lossMessage;
+            stormSummaryTypeWrite.TypewriteText();
+        }
+        
+        // Clear the second typewrite or use it for additional info
+        if (destructionPercentageTypeWrite != null)
+        {
+            // Ensure the gameObject is active
+            destructionPercentageTypeWrite.gameObject.SetActive(true);
+            destructionPercentageTypeWrite.text = "";
+            destructionPercentageTypeWrite.TypewriteText();
+        }
+        
+        // Setup completion callback
+        OnTypewriteComplete = null;
+        OnTypewriteComplete += ShowRestartPrompt;
+    }
+
+    private void ShowRestartPrompt()
+    {
+        // Only show once
+        OnTypewriteComplete = null;
+        
+        DebugLog("Showing restart prompt");
+        
+        // Show continue prompt
+        if (continuePromptText != null)
+        {
+            continuePromptText.gameObject.SetActive(true);
+            
+            // Use different prompts depending on the state
+            if (currentState == GameState.GameOver)
+            {
+                continuePromptText.text = restartPrompt;
+            }
+            else
+            {
+                continuePromptText.text = "Press any key to continue...";
+            }
+        }
+    }
+    
+    /* IMPROVED STORM AUDIO */
+    
+    IEnumerator FadeInStormSounds(StormData storm)
+    {
+        if (storm == null)
+            yield break;
+            
+        DebugLog("Setting storm sounds with fade");
+        
+        // Calculate intensities
+        float windIntensity = Mathf.Clamp01(storm.GetWindMetric() / 10f);
+        float rainIntensity = Mathf.Clamp01(storm.GetFloodingMetric() / 10f);
+        float thunderIntensity = Mathf.Clamp01(storm.GetLightningMetric() / 10f);
+        float electricalIntensity = Mathf.Clamp01(storm.GetElectricalMetric() / 10f);
+        
+        // Apply audio balance curves
+        windIntensity = Mathf.Pow(windIntensity, 0.7f);
+        rainIntensity = rainIntensity * rainIntensity;
+        thunderIntensity = Mathf.Pow(thunderIntensity, 0.8f);
+        electricalIntensity = Mathf.Pow(electricalIntensity, 0.9f);
+        
+        // Set each sound with proper fade
+        foreach (AudioSource source in stormAudioSources)
+        {
+            if (source == null || source.clip == null)
+                continue;
+                
+            float targetVolume = 0f;
+            
+            if (source.clip == windSound)
+                targetVolume = windIntensity;
+            else if (source.clip == rainSound)
+                targetVolume = rainIntensity;
+            else if (source.clip == thunderSound)
+                targetVolume = thunderIntensity;
+            else if (source.clip == electricalSound)
+                targetVolume = electricalIntensity;
+                
+            // Only play if significant volume
+            if (targetVolume > 0.05f)
+            {
+                source.volume = 0f;
+                source.Play();
+                StartCoroutine(FadeAudioSource(source, 0f, targetVolume, fadeDuration));
+            }
+        }
+        
+        yield return null;
     }
     
     /* UTILITY METHODS */
@@ -526,51 +725,6 @@ public class DayManager : MonoBehaviour
         source.volume = endVolume;
     }
     
-    void SetStormSounds(StormData storm)
-    {
-        if (storm == null)
-            return;
-            
-        DebugLog("Setting storm sounds");
-        
-        // Calculate intensities
-        float windIntensity = Mathf.Clamp01(storm.GetWindMetric() / 10f);
-        float rainIntensity = Mathf.Clamp01(storm.GetFloodingMetric() / 10f);
-        float thunderIntensity = Mathf.Clamp01(storm.GetLightningMetric() / 10f);
-        float electricalIntensity = Mathf.Clamp01(storm.GetElectricalMetric() / 10f);
-        
-        // Apply audio balance curves
-        windIntensity = Mathf.Pow(windIntensity, 0.7f);
-        rainIntensity = rainIntensity * rainIntensity;
-        thunderIntensity = Mathf.Pow(thunderIntensity, 0.8f);
-        electricalIntensity = Mathf.Pow(electricalIntensity, 0.9f);
-        
-        // Set each sound to appropriate volume immediately (no fade)
-        foreach (AudioSource source in stormAudioSources)
-        {
-            if (source == null || source.clip == null)
-                continue;
-                
-            float targetVolume = 0f;
-            
-            if (source.clip == windSound)
-                targetVolume = windIntensity;
-            else if (source.clip == rainSound)
-                targetVolume = rainIntensity;
-            else if (source.clip == thunderSound)
-                targetVolume = thunderIntensity;
-            else if (source.clip == electricalSound)
-                targetVolume = electricalIntensity;
-                
-            // Only play if significant
-            if (targetVolume > 0.05f)
-            {
-                source.volume = targetVolume;
-                source.Play();
-            }
-        }
-    }
-    
     void UpdateTimerDisplay()
     {
         if (timerText != null)
@@ -584,7 +738,7 @@ public class DayManager : MonoBehaviour
     void UpdateDayCounter()
     {
         if (dayCounterText != null)
-            dayCounterText.text = $"Day {currentDay} of {maxDays}";
+            dayCounterText.text = $"Day {currentDay}";
     }
     
     void DebugLog(string message)
